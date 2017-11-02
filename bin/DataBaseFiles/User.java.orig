@@ -1,0 +1,244 @@
+package DataBaseFiles;
+
+import lombok.extern.slf4j.Slf4j;
+import javax.annotation.PostConstruct;
+import javax.sql.DataSource;
+import java.sql.*;
+import java.net.URISyntaxException;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.util.Calendar;
+
+
+
+
+public class User {
+ private String userID;
+ private String name;
+ private double [] calories;
+ private double [] weight;
+ 
+ private int WlastUpdateDay;
+ private int WlastUpdateMonth;
+ private int WlastUpdateDayofYear;
+ 
+ private int ClastUpdateDay;
+ private int ClastUpdateMonth;
+ private int ClastUpdateDayofYear;
+ 
+ 
+ public User(String userid, String name ) {
+	 this.userID = userid;
+	 this.name = name;
+	 this.calories = new double[] {0,0,0,0,0,0,0};
+	 this.weight = new double[] {0,0,0,0,0,0,0};
+	 
+	 this.WlastUpdateDay = 0;
+	 this.WlastUpdateMonth = 0;
+	 this.WlastUpdateDayofYear = 0;
+	 
+	 this.ClastUpdateDay = 0;
+	 this.ClastUpdateMonth = 0;
+	 this.ClastUpdateDayofYear = 0;
+}
+
+ public User() {} //default constructor
+ 
+ public String getID() {
+	 return this.userID;
+ }
+ 
+ public String getName() {
+	 return this.name;
+ }
+ 
+ 
+ public void getCalorieHistory() {
+	 this.updateCalories();
+	 
+	 for (int i=0;i<7;i++)
+	 System.out.println(this.calories[i]);
+ }
+
+ 
+ //using the function addNutrition() and setWeight with the cooporation of DB
+ // "nutrition"
+ public void updateCalories() {
+	 	SQLDatabaseEngine engine = new SQLDatabaseEngine();
+	 	Connection connection = engine.getConnection();
+	 	
+	 	String result = null;
+		BufferedReader br = null;
+		InputStreamReader isr = null;
+		
+		try {
+			PreparedStatement stmt = connection.prepareStatement(
+					"SELECT userID,cal,dayofyear FROM CalHistory WHERE userID = ?");
+			
+			stmt.setString(1, this.userID);
+			
+			ResultSet rs = stmt.executeQuery();
+			
+			while(rs.next()) {
+				if(this.ClastUpdateDayofYear == 0) {
+				this.ClastUpdateDayofYear = rs.getInt(3);
+				this.calories[6] = rs.getDouble(2);
+				}
+				
+				else {
+					int diff = rs.getInt(3) - this.ClastUpdateDayofYear;
+					  if(diff<=6 && diff >0) {
+						   for(int i=diff;i<7;i++) {
+							   this.calories[i-diff] = this.calories[i];
+							   this.calories[i]  = 0;
+						   }
+						   this.calories[6] = this.calories[6] + rs.getDouble(2);
+						   this.ClastUpdateDayofYear = rs.getInt(3);
+					  }
+					  
+					  else if(diff == 0) {
+						  this.calories[6] = this.calories[6] + rs.getDouble(2);
+					  }
+					  
+					  else if (diff>7) {
+						  for(int i=0;i<7;i++) {
+							  this.calories[i] = 0;
+						  }
+						  
+						  this.calories[6] = this.calories[6] + rs.getDouble(2);
+						  this.ClastUpdateDayofYear = rs.getInt(3);
+						}
+					
+				}
+			}
+			rs.close();
+			stmt.close();
+			connection.close();
+					
+					
+     }catch (Exception e) {
+    	 System.out.println(e);
+     }
+		
+}
+ 
+ 
+
+ /////////////////////////////////////////////////////////////////////////////////////////////
+ 
+public void addCalories(double cal) {
+	Calendar now = Calendar.getInstance();
+	int dayofyear = now.get(Calendar.DAY_OF_YEAR);
+	
+	SQLDatabaseEngine engine = new SQLDatabaseEngine();
+	Connection connection = engine.getConnection();
+	
+	String result = null;
+	BufferedReader br = null;
+	InputStreamReader isr = null;
+	
+	PreparedStatement stmt = connection.prepareStatement(
+			"INSERT INTO CalHistory (userID,cal,dayofyear) VALUES(?,?,?)");
+			stmt.setString(1, this.userID);
+			stmt.setDouble(2, cal);
+			stmt.setInt(3, dayofyear);
+			
+			 stmt.executeUpdate();
+			
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+
+public void updateWeight() {
+	SQLDatabaseEngine engine;
+ 	Connection connection = engine.getConnection();
+ 	
+ 	String result = null;
+	BufferedReader br = null;
+	InputStreamReader isr = null;
+	
+	try {
+		PreparedStatement stmt = connection.prepareStatement(
+				"SELECT userID,weight,dayofyear FROM WeightHistory WHERE userID = ?");
+		
+		stmt.setString(1, this.userID);
+		
+		ResultSet rs = stmt.executeQuery();
+		
+		while(rs.next()) {
+			if(this.WlastUpdateDayofYear == 0) {
+			this.WlastUpdateDayofYear = rs.getInt(3);
+			this.calories[6] = rs.getDouble(2);
+			}
+			
+			else {
+				int diff = rs.getInt(3) - this.WlastUpdateDayofYear;
+				  if(diff<=6 && diff >0) {
+					   for(int i=diff;i<7;i++) {
+						   this.weight[i-diff] = this.weight[i];
+						   this.weight[i]  = 0;
+					   }
+					   this.weight[6] =  rs.getDouble(2);
+					   this.WlastUpdateDayofYear = rs.getInt(3);
+				  }
+				  
+				  else if(diff == 0) {
+					  this.weight[6] =  rs.getDouble(2);
+				  }
+				  
+				  else if (diff>7) {
+					  for(int i=0;i<7;i++) {
+						  this.weight[i] = 0;
+					  }
+					  
+					  this.weight[6] =  rs.getDouble(2);
+					  this.WlastUpdateDayofYear = rs.getInt(3);
+					}
+				
+			}
+		}
+		rs.close();
+		stmt.close();
+		connection.close();
+				
+				
+ }catch (Exception e) {
+	 System.out.println(e);
+ }
+}
+ 
+ 
+///////////////////////////////////////////////////////////////////////////////////////////
+public void setWeight(double wei){
+		Calendar now = Calendar.getInstance();
+		int dayofyear = now.get(Calendar.DAY_OF_YEAR);
+		
+		SQLDatabaseEngine engine = new SQLDatabaseEngine();
+		Connection connection = engine.getConnection();
+		
+		String result = null;
+		BufferedReader br = null;
+		InputStreamReader isr = null;
+		
+		PreparedStatement stmt = connection.prepareStatement(
+				"INSERT INTO WeightHistory (userID,weight,dayofyear) VALUES(?,?,?)");
+				stmt.setString(1, this.userID);
+				stmt.setDouble(2, wei);
+				stmt.setInt(3, dayofyear);
+				
+				 stmt.executeUpdate();
+				
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+public double[] getWeight() {
+	return weight;
+}
+
+public double[] getCalories() {
+	return calories;
+}
